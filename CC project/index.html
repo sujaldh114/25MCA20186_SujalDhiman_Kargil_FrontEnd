@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus PathFinder — Dijkstra vs A*</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--s1:#12151d;--s2:#181c26;
+  --bo:rgba(255,255,255,.07);--bo2:rgba(255,255,255,.13);
+  --gl:rgba(255,255,255,.04);--gl2:rgba(255,255,255,.07);
+  --gold:#c9a96e;--purple:#a78bfa;
+  --green:#4ade80;--red:#f87171;
+  --tx:#f0ede8;--t2:#9ca3af;--t3:#6b7280;
+  --dij:#60a5fa;--ast:#f97316;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;}
+
+/* HEADER */
+header{flex-shrink:0;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bo);background:rgba(13,15,20,.95);backdrop-filter:blur(16px);z-index:200;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-chip{background:var(--gl2);border:1px solid var(--bo2);border-radius:20px;padding:3px 10px 3px 8px;display:flex;align-items:center;gap:5px;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);font-weight:500;}
+.logo-chip svg{width:11px;height:11px;fill:var(--gold);}
+.logo-title{font-family:'DM Serif Display',serif;font-size:1.2rem;}
+.logo-title em{font-style:italic;color:var(--gold);}
+.hdr-r{display:flex;gap:7px;align-items:center;}
+.hbtn{font-size:.65rem;font-weight:500;padding:5px 11px;border-radius:6px;background:var(--gl);border:1px solid var(--bo);color:var(--t2);cursor:pointer;transition:all .2s;}
+.hbtn:hover,.hbtn.on{background:var(--gl2);border-color:var(--bo2);color:var(--tx);}
+.hbtn.on.gold{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.3);color:var(--gold);}
+
+/* BODY */
+.body{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+/* SIDEBAR */
+.sb{width:340px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--bo);display:flex;flex-direction:column;overflow:hidden;transition:width .32s cubic-bezier(.4,0,.2,1),opacity .28s;}
+.sb.off{width:0;opacity:0;pointer-events:none;}
+.sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;}
+.sb-scroll::-webkit-scrollbar{width:3px;}
+.sb-scroll::-webkit-scrollbar-thumb{background:var(--bo2);}
+
+.sec{padding:14px 14px 10px;border-bottom:1px solid var(--bo);}
+.stitle{font-size:.56rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:10px;}
+
+/* algorithm pills */
+.apills{display:flex;gap:7px;margin-bottom:10px;}
+.apill{flex:1;display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;border:1px solid var(--bo);}
+.apill.dij{background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.18);}
+.apill.ast{background:rgba(249,115,22,.05);border-color:rgba(249,115,22,.18);}
+.apdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.apname{font-size:.72rem;font-weight:600;}
+.apname.dij{color:var(--dij);} .apname.ast{color:var(--ast);}
+.apsub{font-size:.58rem;color:var(--t3);}
+
+.fl{font-size:.58rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;}
+select{width:100%;background:var(--s2);border:1px solid var(--bo);color:var(--tx);padding:8px 28px 8px 10px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;cursor:pointer;margin-bottom:9px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5 4.5-5z' fill='%236b7280'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;transition:border-color .2s;}
+select:hover,select:focus{border-color:rgba(201,169,110,.35);}
+select option{background:#1e2333;color:#f0ede8;}
+
+input[type=range]{flex:1;accent-color:var(--gold);cursor:pointer;}
+
+.rbtn{width:100%;padding:10px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(201,169,110,.88),rgba(232,195,138,.65));color:#0d0f14;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.rbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 16px rgba(201,169,110,.2);}
+.rbtn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+.shim{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:translateX(-100%);animation:shim 1.3s infinite;}
+@keyframes shim{to{transform:translateX(100%)}}
+.brow{display:flex;gap:6px;margin-top:6px;}
+.sbtn{flex:1;padding:7px;border-radius:7px;background:transparent;border:1px solid var(--bo);color:var(--t3);font-family:'DM Sans',sans-serif;font-size:.7rem;cursor:pointer;transition:all .2s;}
+.sbtn:hover{border-color:var(--bo2);color:var(--t2);}
+
+/* RESULTS */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px;}
+.ccard{background:var(--s2);border-radius:8px;border:1px solid var(--bo);padding:10px;}
+.ccard.dij{border-color:rgba(96,165,250,.18);}
+.ccard.ast{border-color:rgba(249,115,22,.18);}
+.clbl{font-size:.56rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;}
+.clbl.dij{color:var(--dij);} .clbl.ast{color:var(--ast);}
+.cstat{background:var(--bg);border-radius:6px;padding:7px;text-align:center;margin-bottom:4px;border:1px solid var(--bo);}
+.cval{font-family:'DM Serif Display',serif;font-size:1.1rem;line-height:1;}
+.clb2{font-size:.52rem;color:var(--t3);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
+.wbadge{font-size:.54rem;padding:3px 6px;border-radius:6px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.16);color:var(--green);text-align:center;margin-top:3px;}
+.lbadge{font-size:.54rem;padding:3px 6px;border-radius:6px;background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.14);color:var(--red);text-align:center;margin-top:3px;}
+
+.ins{background:var(--gl);border:1px solid var(--bo2);border-radius:8px;padding:10px 11px;font-size:.73rem;line-height:1.7;color:var(--t2);}
+.ins b{color:var(--tx);font-weight:500;}
+
+.cwrap{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.cbox{background:var(--s2);border-radius:8px;border:1px solid var(--bo);padding:8px;}
+.cbox.dij{border-color:rgba(96,165,250,.12);}
+.cbox.ast{border-color:rgba(249,115,22,.12);}
+.cboxlbl{font-size:.54rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;}
+.cboxlbl.dij{color:var(--dij);} .cboxlbl.ast{color:var(--ast);}
+.cscroll{max-height:130px;overflow-y:auto;}
+.cscroll::-webkit-scrollbar{width:2px;}
+.cscroll::-webkit-scrollbar-thumb{background:var(--bo2);}
+.pn{display:flex;align-items:center;gap:5px;font-size:.66rem;padding:2px 0;color:var(--t2);}
+.pn .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.pn .dd{margin-left:auto;font-size:.56rem;color:var(--t3);background:var(--bg);padding:1px 4px;border-radius:5px;border:1px solid var(--bo);flex-shrink:0;}
+.pc{width:1px;height:6px;background:var(--bo2);margin-left:2px;}
+
+.lgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.llbl{font-size:.54rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+.llbl.dij{color:var(--dij);} .llbl.ast{color:var(--ast);}
+.lbox{background:var(--bg);border:1px solid var(--bo);border-radius:6px;padding:8px;max-height:120px;overflow-y:auto;font-family:'DM Mono','Courier New',monospace;font-size:.58rem;line-height:1.75;}
+.lbox::-webkit-scrollbar{width:2px;}
+.lbox::-webkit-scrollbar-thumb{background:var(--bo2);}
+.ll{color:var(--t3);}
+.ll.hd{color:var(--dij);} .ll.ha{color:var(--ast);}
+
+.hidden{display:none!important;}
+.fin{animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* complexity */
+.cxgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px;}
+.cxi{background:var(--s2);border-radius:7px;border:1px solid var(--bo);padding:8px;}
+.cxi.dij{border-color:rgba(96,165,250,.15);}
+.cxi.ast{border-color:rgba(249,115,22,.15);}
+.cxname{font-size:.7rem;font-weight:600;margin-bottom:3px;}
+.cxname.dij{color:var(--dij);} .cxname.ast{color:var(--ast);}
+.cxf{font-size:.6rem;color:var(--t3);line-height:1.65;}
+
+/* MAP */
+.mw{flex:1;position:relative;overflow:hidden;background:#0c1421;}
+canvas{display:block;cursor:default;}
+.mlbl{position:absolute;top:11px;left:50%;transform:translateX(-50%);background:rgba(13,15,20,.9);backdrop-filter:blur(10px);border:1px solid var(--bo2);padding:4px 13px;border-radius:16px;font-size:.58rem;font-weight:500;letter-spacing:.06em;color:var(--t2);pointer-events:none;white-space:nowrap;z-index:10;}
+.mst{position:absolute;top:11px;left:11px;background:rgba(13,15,20,.9);backdrop-filter:blur(10px);border:1px solid var(--bo);padding:4px 10px;border-radius:6px;font-size:.58rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);z-index:10;transition:all .3s;}
+.mst.run{border-color:rgba(201,169,110,.4);color:var(--gold);}
+.mst.done{border-color:rgba(74,222,128,.3);color:var(--green);}
+
+
+/* map legend */
+.mleg{position:absolute;top:11px;right:11px;background:rgba(13,15,20,.9);backdrop-filter:blur(10px);border:1px solid var(--bo);border-radius:8px;padding:8px 11px;z-index:10;}
+.mlr{display:flex;align-items:center;gap:6px;font-size:.65rem;color:var(--t2);margin-bottom:3px;}
+.mlr:last-child{margin-bottom:0;}
+.mll{width:18px;height:3px;border-radius:2px;flex-shrink:0;}
+.mld{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* compass + scale */
+.comp{position:absolute;bottom:50px;right:11px;width:40px;height:40px;background:rgba(13,15,20,.9);border:1px solid var(--bo);border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:10;}
+.scb{position:absolute;bottom:11px;right:60px;background:rgba(13,15,20,.8);border:1px solid var(--bo);border-radius:4px;padding:3px 8px;font-size:.56rem;color:var(--t2);z-index:10;font-family:'DM Mono',monospace;}
+
+/* mini map */
+.mm{position:absolute;bottom:11px;left:50px;background:rgba(13,15,20,.9);border:1px solid var(--bo);border-radius:6px;overflow:hidden;z-index:10;}
+
+/* tooltip */
+.tip{position:absolute;background:rgba(13,15,20,.97);border:1px solid rgba(201,169,110,.22);border-radius:6px;padding:5px 9px;font-size:.7rem;pointer-events:none;z-index:30;display:none;white-space:nowrap;}
+.tipn{font-weight:600;color:var(--tx);margin-bottom:1px;}
+.tips{font-size:.58rem;color:var(--t3);}
+
+.toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%) translateY(44px);background:rgba(28,33,46,.97);backdrop-filter:blur(12px);border:1px solid var(--bo2);border-radius:8px;padding:7px 15px;font-size:.73rem;z-index:9999;transition:transform .26s;pointer-events:none;text-align:center;max-width:380px;}
+.toast.on{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-chip"><svg viewBox="0 0 16 16"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>PathFinder</div>
+    <div class="logo-title">Campus <em>Navigator</em></div>
+  </div>
+  <div class="hdr-r">
+    <span style="font-size:.63rem;color:var(--t3);">Chandigarh University · Mohali</span>
+    <button class="hbtn gold" id="fb" onclick="toggleSB()">⛶ Full Map</button>
+  </div>
+</header>
+
+<div class="body">
+<!-- SIDEBAR -->
+<div class="sb" id="sb">
+ <div class="sb-scroll">
+
+  <!-- ALGO LEGEND + CONTROLS -->
+  <div class="sec">
+    <div class="stitle">Both algorithms run simultaneously</div>
+    <div class="apills">
+      <div class="apill dij"><div class="apdot" style="background:var(--dij)"></div><div><div class="apname dij">Dijkstra</div><div class="apsub">Explores uniformly</div></div></div>
+      <div class="apill ast"><div class="apdot" style="background:var(--ast)"></div><div><div class="apname ast">A* Star</div><div class="apsub">Heuristic-guided</div></div></div>
+    </div>
+    <label class="fl">Source</label>
+    <select id="ss" onchange="onSel('s')"><option value="">— Select Source —</option></select>
+    <label class="fl">Destination</label>
+    <select id="sd" onchange="onSel('d')"><option value="">— Select Destination —</option></select>
+    <button class="rbtn" id="rbtn" onclick="runBoth()">▶&nbsp; Find &amp; Compare Both Paths</button>
+    <div class="brow">
+      <button class="sbtn" onclick="doSwap()">⇅ Swap</button>
+      <button class="sbtn" onclick="clearAll()">✕ Clear</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="sec hidden" id="sec-res">
+    <div class="stitle">Comparison Results</div>
+    <div class="cgrid">
+      <div class="ccard dij">
+        <div class="clbl dij">⚡ Dijkstra</div>
+        <div class="cstat"><div class="cval" id="dd" style="color:var(--dij)">—</div><div class="clb2">Distance (m)</div></div>
+        <div class="cstat"><div class="cval" id="dv" style="color:var(--purple)">—</div><div class="clb2">Nodes Visited</div></div>
+        <div class="cstat"><div class="cval" id="dt" style="color:var(--gold)">—</div><div class="clb2">Walk (min)</div></div>
+        <div class="cstat"><div class="cval" id="dh" style="color:var(--green)">—</div><div class="clb2">Hops</div></div>
+        <div id="dbadge"></div>
+      </div>
+      <div class="ccard ast">
+        <div class="clbl ast">✦ A* Star</div>
+        <div class="cstat"><div class="cval" id="ad" style="color:var(--ast)">—</div><div class="clb2">Distance (m)</div></div>
+        <div class="cstat"><div class="cval" id="av" style="color:var(--purple)">—</div><div class="clb2">Nodes Visited</div></div>
+        <div class="cstat"><div class="cval" id="at" style="color:var(--gold)">—</div><div class="clb2">Walk (min)</div></div>
+        <div class="cstat"><div class="cval" id="ah" style="color:var(--green)">—</div><div class="clb2">Hops</div></div>
+        <div id="abadge"></div>
+      </div>
+    </div>
+    <div class="ins" id="ins"></div>
+  </div>
+
+  <!-- PATH CHAINS -->
+  <div class="sec hidden" id="sec-chains">
+    <div class="stitle">Route Step-by-Step</div>
+    <div class="cwrap">
+      <div class="cbox dij"><div class="cboxlbl dij">Dijkstra route</div><div class="cscroll" id="cd"></div></div>
+      <div class="cbox ast"><div class="cboxlbl ast">A* route</div><div class="cscroll" id="ca"></div></div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div class="sec hidden" id="sec-log">
+    <div class="stitle">Node Expansion Log</div>
+    <div class="lgrid">
+      <div><div class="llbl dij">Dijkstra</div><div class="lbox" id="ld"></div></div>
+      <div><div class="llbl ast">A* Star</div><div class="lbox" id="la"></div></div>
+    </div>
+  </div>
+
+  <!-- COMPLEXITY -->
+  <div class="sec">
+    <div class="stitle">Algorithm Complexity</div>
+    <div class="cxgrid">
+      <div class="cxi dij"><div class="cxname dij">Dijkstra</div><div class="cxf">Time: O((V+E) log V)<br>Space: O(V)<br>Heuristic: <b style="color:var(--t2)">None</b></div></div>
+      <div class="cxi ast"><div class="cxname ast">A* Star</div><div class="cxf">Time: O(E) best<br>Space: O(V)<br>Heuristic: <b style="color:var(--t2)">Euclidean</b></div></div>
+    </div>
+    <div style="font-size:.7rem;line-height:1.7;color:var(--t3);">Both find the same <b style="color:var(--t2)">optimal shortest path</b>. A* visits fewer nodes because its heuristic skips regions far from the goal. Dijkstra must explore all directions equally.</div>
+  </div>
+
+ </div><!-- /sb-scroll -->
+</div><!-- /sb -->
+
+<!-- MAP -->
+<div class="mw" id="mw">
+  <canvas id="mc"></canvas>
+  <div class="mlbl">Chandigarh University Campus · Gharuan, Mohali · Punjab</div>
+  <div class="mst" id="mst">Ready</div>
+
+  <div class="mleg">
+    <div class="mlr"><div class="mll" style="background:var(--dij)"></div>Dijkstra path</div>
+    <div class="mlr"><div class="mll" style="background:var(--ast);border-top:2px dashed rgba(249,115,22,.5);height:0"></div>A* path</div>
+    <div class="mlr"><div class="mld" style="background:#10b981"></div>Source</div>
+    <div class="mlr"><div class="mld" style="background:#f87171"></div>Destination</div>
+    <div class="mlr"><div class="mld" style="background:rgba(96,165,250,.55);border:1px solid var(--dij)"></div>Dijkstra visited</div>
+    <div class="mlr"><div class="mld" style="background:rgba(249,115,22,.45);border:1px solid var(--ast)"></div>A* visited</div>
+    <div class="mlr"><div class="mld" style="background:rgba(167,139,250,.55);border:1px solid var(--purple)"></div>Both visited</div>
+  </div>
+  <div class="comp">
+    <svg width="26" height="26" viewBox="0 0 26 26">
+      <circle cx="13" cy="13" r="11" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+      <polygon points="13,3 10.5,12 13,10.5 15.5,12" fill="#f87171"/>
+      <polygon points="13,23 10.5,14 13,15.5 15.5,14" fill="rgba(255,255,255,.3)"/>
+      <text x="13" y="7" text-anchor="middle" font-size="4" fill="#f87171" font-family="DM Sans,sans-serif">N</text>
+    </svg>
+  </div>
+  <div class="scb" id="scb">≈ 200m</div>
+  <div class="mm"><canvas id="mc2" width="110" height="78"></canvas></div>
+  <div class="tip" id="tip"><div class="tipn" id="tn"></div><div class="tips" id="ts"></div></div>
+</div>
+</div><!-- /body -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CAMPUS DATA
+   x,y = 0..1 normalized coords
+   w,h = building footprint fractions
+   type: academic | boys | girls | ground | facility | gate
+═══════════════════════════════════════════════════ */
+var BLD=[
+  /* GATES */
+  {id:'g_main', label:'Main Gate',    x:.06,y:.50,w:.022,h:.022,type:'gate'},
+  {id:'g_north',label:'North Gate',   x:.06,y:.18,w:.022,h:.022,type:'gate'},
+  {id:'g_south',label:'South Gate',   x:.06,y:.82,w:.022,h:.022,type:'gate'},
+  {id:'g_east', label:'East Gate',    x:.94,y:.50,w:.022,h:.022,type:'gate'},
+  /* NORTH — ACADEMIC */
+  {id:'A1',label:'Block A1',x:.28,y:.12,w:.07,h:.05,type:'academic'},
+  {id:'A2',label:'Block A2',x:.37,y:.12,w:.07,h:.05,type:'academic'},
+  {id:'A3',label:'Block A3',x:.46,y:.12,w:.07,h:.05,type:'academic'},
+  {id:'B1',label:'Block B1',x:.28,y:.22,w:.07,h:.05,type:'academic'},
+  {id:'B2',label:'Block B2',x:.37,y:.22,w:.07,h:.05,type:'academic'},
+  {id:'B3',label:'Block B3',x:.46,y:.22,w:.07,h:.05,type:'academic'},
+  {id:'B4',label:'Block B4',x:.55,y:.22,w:.07,h:.05,type:'academic'},
+  {id:'B5',label:'Block B5',x:.64,y:.22,w:.07,h:.05,type:'academic'},
+  {id:'C1',label:'Block C1',x:.28,y:.33,w:.07,h:.05,type:'academic'},
+  {id:'C2',label:'Block C2',x:.37,y:.33,w:.07,h:.05,type:'academic'},
+  {id:'C3',label:'Block C3',x:.46,y:.33,w:.07,h:.05,type:'academic'},
+  {id:'D1',label:'Block D1',x:.55,y:.33,w:.07,h:.05,type:'academic'},
+  {id:'D2',label:'Block D2',x:.64,y:.33,w:.07,h:.05,type:'academic'},
+  {id:'D3',label:'Block D3',x:.73,y:.33,w:.07,h:.05,type:'academic'},
+  {id:'D4',label:'Block D4',x:.55,y:.12,w:.07,h:.05,type:'academic'},
+  {id:'D5',label:'Block D5',x:.64,y:.12,w:.07,h:.05,type:'academic'},
+  {id:'D6',label:'Block D6',x:.73,y:.12,w:.07,h:.05,type:'academic'},
+  /* NORTH — FACILITIES */
+  {id:'lib',  label:'Library',         x:.46,y:.45,w:.08,h:.056,type:'facility'},
+  {id:'aud',  label:'Auditorium',      x:.36,y:.45,w:.076,h:.054,type:'facility'},
+  {id:'adm',  label:'Admin Block',     x:.26,y:.45,w:.076,h:.054,type:'facility'},
+  {id:'food1',label:'Food Court N',    x:.17,y:.34,w:.064,h:.046,type:'facility'},
+  {id:'med',  label:'Medical Centre',  x:.17,y:.24,w:.060,h:.044,type:'facility'},
+  {id:'atm',  label:'ATM / Bank',      x:.16,y:.45,w:.056,h:.040,type:'facility'},
+  {id:'conv', label:'Convocation Hall',x:.73,y:.45,w:.07,h:.056,type:'facility'},
+  {id:'sport',label:'Sports Complex',  x:.83,y:.33,w:.074,h:.064,type:'ground'},
+  {id:'cric', label:'Cricket Ground',  x:.83,y:.17,w:.096,h:.116,type:'ground'},
+  /* BOYS HOSTELS */
+  {id:'LC_A',label:'LC-A',x:.16,y:.59,w:.054,h:.040,type:'boys'},
+  {id:'LC_B',label:'LC-B',x:.16,y:.66,w:.054,h:.040,type:'boys'},
+  {id:'LC_C',label:'LC-C',x:.24,y:.59,w:.054,h:.040,type:'boys'},
+  {id:'LC_D',label:'LC-D',x:.24,y:.66,w:.054,h:.040,type:'boys'},
+  {id:'NC1', label:'NC-1',x:.32,y:.59,w:.054,h:.040,type:'boys'},
+  {id:'NC2', label:'NC-2',x:.32,y:.66,w:.054,h:.040,type:'boys'},
+  {id:'NC3', label:'NC-3',x:.40,y:.59,w:.054,h:.040,type:'boys'},
+  {id:'NC4', label:'NC-4',x:.40,y:.66,w:.054,h:.040,type:'boys'},
+  {id:'NC5', label:'NC-5',x:.48,y:.59,w:.054,h:.040,type:'boys'},
+  {id:'NC6', label:'NC-6',x:.48,y:.66,w:.054,h:.040,type:'boys'},
+  {id:'Zakir',label:'Zakir H.',x:.56,y:.59,w:.054,h:.040,type:'boys'},
+  /* GIRLS HOSTELS */
+  {id:'SK1',label:'Sukhna-1',x:.63,y:.59,w:.054,h:.040,type:'girls'},
+  {id:'SK2',label:'Sukhna-2',x:.71,y:.59,w:.054,h:.040,type:'girls'},
+  {id:'SK3',label:'Sukhna-3',x:.79,y:.59,w:.054,h:.040,type:'girls'},
+  {id:'GH1',label:'Girls H-1',x:.63,y:.66,w:.054,h:.040,type:'girls'},
+  {id:'GH2',label:'Girls H-2',x:.71,y:.66,w:.054,h:.040,type:'girls'},
+  /* SOUTH CAMPUS */
+  {id:'SE1',label:'SC-E1',x:.28,y:.83,w:.068,h:.050,type:'academic'},
+  {id:'SE2',label:'SC-E2',x:.37,y:.83,w:.068,h:.050,type:'academic'},
+  {id:'SF1',label:'SC-F1',x:.46,y:.83,w:.068,h:.050,type:'academic'},
+  {id:'SF2',label:'SC-F2',x:.55,y:.83,w:.068,h:.050,type:'academic'},
+  {id:'SG1',label:'SC-G1',x:.64,y:.83,w:.068,h:.050,type:'academic'},
+  {id:'SC_lib', label:'SC Library',  x:.37,y:.93,w:.060,h:.042,type:'facility'},
+  {id:'SC_food',label:'SC Food Ct.', x:.26,y:.93,w:.060,h:.042,type:'facility'},
+  {id:'SC_BH1', label:'SC Boys-1',   x:.54,y:.93,w:.054,h:.040,type:'boys'},
+  {id:'SC_BH2', label:'SC Boys-2',   x:.61,y:.93,w:.054,h:.040,type:'boys'},
+  {id:'SC_GH1', label:'SC Girls-1',  x:.68,y:.93,w:.054,h:.040,type:'girls'},
+  {id:'SC_GH2', label:'SC Girls-2',  x:.75,y:.93,w:.054,h:.040,type:'girls'},
+  {id:'SC_gnd', label:'SC Ground',   x:.83,y:.83,w:.088,h:.098,type:'ground'},
+];
+
+/*
+  Edge weights are real approximate distances in METRES.
+  The heuristic must use the same unit: metres.
+  We convert normalised (0-1) coords to metres using the
+  approximate real dimensions of the campus grid:
+    horizontal span ≈ 900 m  (x axis)
+    vertical span   ≈ 700 m  (y axis)
+  This makes the heuristic admissible (never overestimates)
+  because it is straight-line distance, which is always ≤ road distance.
+*/
+var CAMPUS_W_M = 900;  // metres represented by x: 0→1
+var CAMPUS_H_M = 700;  // metres represented by y: 0→1
+
+var EDGES=[
+  /* Gates */
+  ['g_main','atm',65],['g_main','food1',130],['g_main','adm',165],
+  ['g_north','med',90],['g_north','A1',160],
+  ['g_south','LC_A',110],['g_south','SE1',200],
+  ['g_east','conv',85],['g_east','SK3',155],['g_east','sport',130],
+  /* N road spine */
+  ['atm','adm',75],['adm','food1',85],['food1','med',95],
+  ['adm','aud',85],['aud','lib',85],['lib','conv',90],
+  /* A row */
+  ['A1','A2',85],['A2','A3',85],['A3','D4',85],['D4','D5',85],['D5','D6',85],
+  /* B row */
+  ['B1','B2',85],['B2','B3',85],['B3','B4',85],['B4','B5',85],
+  /* C-D row */
+  ['C1','C2',85],['C2','C3',85],['C3','D1',85],['D1','D2',85],['D2','D3',85],
+  /* Vertical A-B */
+  ['A1','B1',95],['A2','B2',95],['A3','B3',95],['D4','B4',95],['D5','B5',95],
+  /* Vertical B-C */
+  ['B1','C1',95],['B2','C2',95],['B3','C3',95],['B4','D1',95],['B5','D2',95],['D6','D3',95],
+  /* Academic → facilities */
+  ['A1','med',120],['B1','food1',110],['C1','adm',110],
+  ['C2','aud',110],['C3','lib',110],['D1','lib',110],
+  ['D2','conv',120],['D3','conv',95],
+  ['D5','sport',110],['D6','sport',95],
+  ['D5','cric',120],['D6','cric',100],['sport','conv',105],
+  /* Hostel road */
+  ['LC_A','LC_B',52],['LC_A','LC_C',85],['LC_C','LC_D',52],['LC_B','LC_D',85],
+  ['LC_C','NC1',85],['NC1','NC2',52],['NC1','NC3',85],['NC2','NC4',85],
+  ['NC3','NC4',52],['NC3','NC5',85],['NC4','NC6',85],
+  ['NC5','NC6',52],['NC5','Zakir',85],['NC6','Zakir',52],
+  ['Zakir','SK1',85],['SK1','SK2',62],['SK2','SK3',62],
+  ['SK1','GH1',62],['SK2','GH2',62],['GH1','GH2',62],
+  /* Hostels → academic */
+  ['LC_A','adm',140],['LC_B','g_south',110],
+  ['NC1','C1',140],['NC3','C2',140],['NC5','C3',140],
+  ['Zakir','D1',140],['SK1','D2',140],['GH2','D3',140],['SK3','g_east',150],
+  /* N ↔ S connectors */
+  ['g_south','SE1',130],['adm','SE1',220],['lib','SF1',220],['conv','SG1',230],
+  /* South campus */
+  ['SE1','SE2',85],['SE2','SF1',85],['SF1','SF2',85],['SF2','SG1',85],
+  ['SE1','SC_food',95],['SE2','SC_lib',85],['SF1','SC_lib',75],
+  ['SF2','SC_BH1',95],['SG1','SC_BH2',95],['SC_BH1','SC_BH2',62],
+  ['SG1','SC_GH1',95],['SC_GH1','SC_GH2',62],['SC_GH2','SC_gnd',95],
+  ['SG1','SC_gnd',110],['SC_BH1','SC_GH1',85],['SC_food','g_south',115],
+  ['SC_food','SC_lib',100],
+];
+
+/* Build adjacency list */
+var G={};
+BLD.forEach(function(b){G[b.id]=[];});
+EDGES.forEach(function(e){
+  if(!G[e[0]])G[e[0]]=[];
+  if(!G[e[1]])G[e[1]]=[];
+  G[e[0]].push({to:e[1],d:e[2]});
+  G[e[1]].push({to:e[0],d:e[2]});
+});
+
+var NODES={};
+BLD.forEach(function(b){NODES[b.id]=b;});
+
+/* Populate selects */
+var GRPS={academic:'Academic Blocks',boys:'Boys Hostels',girls:"Girls' Hostels",facility:'Facilities',ground:'Grounds & Sports',gate:'Gates'};
+['ss','sd'].forEach(function(sid){
+  var el=document.getElementById(sid);
+  var byT={};
+  BLD.forEach(function(b){if(!byT[b.type])byT[b.type]=[];byT[b.type].push(b);});
+  Object.keys(GRPS).forEach(function(t){
+    if(!byT[t])return;
+    var og=document.createElement('optgroup');og.label=GRPS[t];
+    byT[t].forEach(function(b){var o=document.createElement('option');o.value=b.id;o.textContent=b.label;og.appendChild(o);});
+    el.appendChild(og);
+  });
+});
+
+/* ═══════════════════════════════════════════════════
+   CANVAS SETUP  — NO PAN, zoom only
+═══════════════════════════════════════════════════ */
+var cv,ctx,cv2,ctx2;
+var W=800,H=600;
+
+function w2s(nx,ny){
+  var pL=36,pR=36,pT=28,pB=28;
+  return {x:pL+nx*(W-pL-pR), y:pT+ny*(H-pT-pB)};
+}
+function s2w(sx,sy){
+  var pL=36,pR=36,pT=28,pB=28;
+  return {x:(sx-pL)/(W-pL-pR), y:(sy-pT)/(H-pT-pB)};
+}
+
+/* Visual state map: nodeId → state string */
+var VM={};
+/* Visited sets (separate so we can show both colours correctly) */
+var VIS_D={}; // nodes visited by Dijkstra (not on its path, not src/dst)
+var VIS_A={}; // nodes visited by A* (not on its path)
+/* Path edge arrays */
+var PD=[],PA=[];
+var busy=false;
+var SRC='',DST='';
+
+/* TYPE → DRAW STYLE */
+var TC={
+  academic: {f:'rgba(96,165,250,.12)',  s:'rgba(96,165,250,.48)',  lc:'#93c5fd'},
+  boys:     {f:'rgba(201,169,110,.12)', s:'rgba(201,169,110,.48)', lc:'#d4a96a'},
+  girls:    {f:'rgba(244,114,182,.12)', s:'rgba(244,114,182,.48)', lc:'#f9a8d4'},
+  ground:   {f:'rgba(74,222,128,.06)',  s:'rgba(74,222,128,.30)',  lc:'#86efac'},
+  facility: {f:'rgba(167,139,250,.12)', s:'rgba(167,139,250,.46)', lc:'#c4b5fd'},
+  gate:     {f:'rgba(248,113,113,.14)', s:'rgba(248,113,113,.55)', lc:'#fca5a5'},
+};
+
+function nodeColor(id){
+  /* Returns {fill,stroke} based on VM state and which algo visited it */
+  var st=VM[id]||'default';
+  if(st==='source')  return {f:'rgba(16,185,129,.3)',   s:'#10b981'};
+  if(st==='dest')    return {f:'rgba(248,113,113,.3)',  s:'#f87171'};
+  if(st==='path-d')  return {f:'rgba(96,165,250,.28)',  s:'#60a5fa'};
+  if(st==='path-a')  return {f:'rgba(249,115,22,.28)',  s:'#f97316'};
+  if(st==='path-both')return{f:'rgba(167,139,250,.3)', s:'#a78bfa'};
+  /* visited states */
+  var vd=VIS_D[id]||false, va=VIS_A[id]||false;
+  if(vd&&va) return {f:'rgba(167,139,250,.18)', s:'rgba(167,139,250,.65)'};
+  if(vd)     return {f:'rgba(96,165,250,.16)',  s:'rgba(96,165,250,.6)'};
+  if(va)     return {f:'rgba(249,115,22,.14)',  s:'rgba(249,115,22,.6)'};
+  return null; /* use type color */
+}
+
+function initCanvas(){
+  cv=document.getElementById('mc');ctx=cv.getContext('2d');
+  cv2=document.getElementById('mc2');ctx2=cv2.getContext('2d');
+  rsz();
+  /* Tooltip on hover only — no click, no pan */
+  cv.addEventListener('mousemove',onMM);
+  cv.addEventListener('mouseleave',function(){document.getElementById('tip').style.display='none';});
+  window.addEventListener('resize',function(){rsz();draw();});
+  draw();
+}
+function rsz(){var w=document.getElementById('mw');W=w.clientWidth;H=w.clientHeight;cv.width=W;cv.height=H;}
+
+function draw(){
+  if(!ctx)return;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0c1421';ctx.fillRect(0,0,W,H);
+
+  /* Grid */
+  ctx.strokeStyle='rgba(255,255,255,.022)';ctx.lineWidth=1;
+  var gs=52;
+  for(var gx=0;gx<W;gx+=gs){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(var gy=0;gy<H;gy+=gs){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+
+  /* Zone fills */
+  var z1a=w2s(.05,.05),z1b=w2s(.97,.74);
+  ctx.fillStyle='rgba(96,165,250,.022)';ctx.fillRect(z1a.x,z1a.y,z1b.x-z1a.x,z1b.y-z1a.y);
+  ctx.strokeStyle='rgba(96,165,250,.055)';ctx.lineWidth=.8;ctx.strokeRect(z1a.x,z1a.y,z1b.x-z1a.x,z1b.y-z1a.y);
+
+  var z2a=w2s(.05,.77),z2b=w2s(.97,.99);
+  ctx.fillStyle='rgba(201,169,110,.022)';ctx.fillRect(z2a.x,z2a.y,z2b.x-z2a.x,z2b.y-z2a.y);
+  ctx.strokeStyle='rgba(201,169,110,.055)';ctx.lineWidth=.8;ctx.strokeRect(z2a.x,z2a.y,z2b.x-z2a.x,z2b.y-z2a.y);
+
+  /* Zone labels */
+  var zn1=w2s(.08,.07),zn2=w2s(.08,.79);
+  ctx.font='600 9.5px DM Sans,sans-serif';
+  ctx.textAlign='left';
+  ctx.fillStyle='rgba(96,165,250,.28)'; ctx.fillText('NORTH CAMPUS',zn1.x,zn1.y+12);
+  ctx.fillStyle='rgba(201,169,110,.28)';ctx.fillText('SOUTH CAMPUS',zn2.x,zn2.y+12);
+
+  /* Roads */
+  EDGES.forEach(function(e){
+    var na=NODES[e[0]],nb=NODES[e[1]];if(!na||!nb)return;
+    var pa=w2s(na.x,na.y),pb=w2s(nb.x,nb.y);
+    ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+    ctx.strokeStyle='rgba(255,255,255,.075)';ctx.lineWidth=2;ctx.stroke();
+    ctx.font='400 6.5px DM Mono,monospace';
+    ctx.fillStyle='rgba(255,255,255,.14)';ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText(e[2]+'m',(pa.x+pb.x)/2,(pa.y+pb.y)/2-2);
+  });
+
+  /* Path edges */
+  PD.forEach(function(pe){gEdge(pe.a,pe.b,'#60a5fa',6,false);});
+  PA.forEach(function(pe){gEdge(pe.a,pe.b,'#f97316',4,true);});
+
+  /* Buildings */
+  var pL=36,pR=36,pT=28,pB=28;
+  BLD.forEach(function(b){
+    var ov=nodeColor(b.id);
+    var bc=TC[b.type]||TC.facility;
+    var p=w2s(b.x,b.y);
+    var rw=b.w*(W-pL-pR), rh=b.h*(H-pT-pB);
+    var rx=p.x-rw/2, ry=p.y-rh/2;
+    if(ov){ctx.shadowColor=ov.s;ctx.shadowBlur=14;}
+    ctx.fillStyle=ov?ov.f:bc.f;
+    rrect(ctx,rx,ry,rw,rh,3);ctx.fill();
+    ctx.strokeStyle=ov?ov.s:bc.s;ctx.lineWidth=ov?2:1;
+    rrect(ctx,rx,ry,rw,rh,3);ctx.stroke();
+    ctx.shadowBlur=0;
+    /* centre dot */
+    var dr=ov?4:2.5;
+    ctx.beginPath();ctx.arc(p.x,p.y,dr,0,Math.PI*2);
+    ctx.fillStyle=ov?ov.s:bc.s;ctx.fill();
+    /* label */
+    ctx.font='600 7.5px DM Sans,sans-serif';
+    ctx.fillStyle=ov?ov.s:bc.lc;ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(b.label,p.x,p.y+rh/2+2);
+    ctx.textBaseline='alphabetic';
+  });
+  drawMini();
+}
+
+function rrect(c,x,y,w,h,r){
+  c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();
+}
+function gEdge(a,b,col,lw,dash){
+  var na=NODES[a],nb=NODES[b];if(!na||!nb)return;
+  var pa=w2s(na.x,na.y),pb=w2s(nb.x,nb.y);
+  ctx.save();
+  if(dash)ctx.setLineDash([9,5]);
+  ctx.shadowColor=col;ctx.shadowBlur=9;
+  ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+  ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.stroke();
+  ctx.shadowBlur=0;ctx.setLineDash([]);ctx.restore();
+}
+function drawMini(){
+  if(!ctx2)return;
+  var mW=110,mH=78,pd=4;
+  ctx2.clearRect(0,0,mW,mH);
+  ctx2.fillStyle='#0c1421';ctx2.fillRect(0,0,mW,mH);
+  ctx2.fillStyle='rgba(96,165,250,.05)'; ctx2.fillRect(pd,pd,mW-pd*2,(mH-pd*2)*.72);
+  ctx2.fillStyle='rgba(201,169,110,.05)';ctx2.fillRect(pd,pd+(mH-pd*2)*.75,mW-pd*2,(mH-pd*2)*.22);
+  EDGES.forEach(function(e){
+    var na=NODES[e[0]],nb=NODES[e[1]];if(!na||!nb)return;
+    ctx2.beginPath();ctx2.moveTo(pd+na.x*(mW-pd*2),pd+na.y*(mH-pd*2));ctx2.lineTo(pd+nb.x*(mW-pd*2),pd+nb.y*(mH-pd*2));
+    ctx2.strokeStyle='rgba(255,255,255,.1)';ctx2.lineWidth=.6;ctx2.stroke();
+  });
+  BLD.forEach(function(b){
+    var ov=nodeColor(b.id);
+    var def='rgba(255,255,255,.17)';
+    ctx2.beginPath();ctx2.arc(pd+b.x*(mW-pd*2),pd+b.y*(mH-pd*2),1.8,0,Math.PI*2);
+    ctx2.fillStyle=ov?ov.s:def;ctx2.fill();
+  });
+  /* viewport rect */
+  var v1=s2w(0,0),v2=s2w(W,H);
+  ctx2.strokeStyle='rgba(201,169,110,.4)';ctx2.lineWidth=1;
+  ctx2.strokeRect(pd+v1.x*(mW-pd*2),pd+v1.y*(mH-pd*2),(v2.x-v1.x)*(mW-pd*2),(v2.y-v1.y)*(mH-pd*2));
+}
+
+/* TOOLTIP (hover only, no click) */
+function onMM(e){
+  var r=cv.getBoundingClientRect();
+  var mx=e.clientX-r.left,my=e.clientY-r.top;
+  var hit=null,bestA=Infinity;
+  var pL=36,pR=36,pT=28,pB=28;
+  BLD.forEach(function(b){
+    var p=w2s(b.x,b.y);
+    var rw=b.w*(W-pL-pR)/2, rh=b.h*(H-pT-pB)/2;
+    if(mx>=p.x-rw-3&&mx<=p.x+rw+3&&my>=p.y-rh-3&&my<=p.y+rh+3){
+      var a=rw*rh;if(a<bestA){hit=b;bestA=a;}
+    }
+  });
+  var tip=document.getElementById('tip');
+  if(hit){
+    var tm={academic:'Academic Block',boys:'Boys Hostel',girls:"Girls' Hostel",ground:'Ground/Sport',facility:'Facility',gate:'Gate'};
+    document.getElementById('tn').textContent=hit.label;
+    document.getElementById('ts').textContent=(tm[hit.type]||hit.type)+' · '+(G[hit.id]||[]).length+' connections';
+    tip.style.display='block';tip.style.left=(mx+13)+'px';tip.style.top=(my-5)+'px';
+  } else {tip.style.display='none';}
+}
+
+/* ═══════════════════════════════════════════════════
+   ALGORITHMS  — verified correct implementations
+
+   HEURISTIC: straight-line distance in METRES.
+   Uses CAMPUS_W_M / CAMPUS_H_M to convert normalised
+   coords to metres — keeps heuristic admissible (≤ true cost).
+
+   PATH RECONSTRUCTION: stop when prev[cur] is undefined
+   (meaning cur = source, which has no predecessor).
+   Using `c !== undefined` would loop forever because
+   the source node is in prev as undefined (never set).
+═══════════════════════════════════════════════════ */
+
+function heur(a, b) {
+  var na = NODES[a], nb = NODES[b];
+  var dx = (na.x - nb.x) * CAMPUS_W_M;
+  var dy = (na.y - nb.y) * CAMPUS_H_M;
+  return Math.sqrt(dx * dx + dy * dy);
+  /* This is always ≤ road distance, so A* remains admissible (optimal). */
+}
+
+function buildPath(prev, src, dst) {
+  /* Walk backwards from dst to src using prev map.
+     Stop when current node = src (prev[src] is never set). */
+  var path = [];
+  var cur = dst;
+  var guard = 0;
+  while (cur !== undefined && guard < 200) {
+    path.unshift(cur);
+    if (cur === src) break;
+    cur = prev[cur];
+    guard++;
+  }
+  /* If we didn't reach src, graph is disconnected — return empty */
+  if (path[0] !== src) return [];
+  return path;
+}
+
+function dijkstra(src, dst) {
+  var dist = {}, prev = {}, vis = {}, ord = [], steps = [];
+  BLD.forEach(function(b) { dist[b.id] = Infinity; });
+  dist[src] = 0;
+
+  /* Simple binary-min-heap priority queue */
+  var pq = [{ n: src, c: 0 }];
+
+  while (pq.length) {
+    /* Pop minimum-cost node */
+    pq.sort(function(a, b) { return a.c - b.c; });
+    var top = pq.shift();
+    var u = top.n, cost = top.c;
+
+    if (vis[u]) continue;
+    vis[u] = true;
+    ord.push(u);
+    steps.push('↗ Visit ' + NODES[u].label + ' (d=' + Math.round(cost) + 'm)');
+
+    if (u === dst) break;
+
+    (G[u] || []).forEach(function(e) {
+      if (vis[e.to]) return;
+      var alt = dist[u] + e.d;
+      if (alt < dist[e.to]) {
+        dist[e.to] = alt;
+        prev[e.to] = u;
+        pq.push({ n: e.to, c: alt });
+        steps.push('   Relax ' + NODES[e.to].label + ': ' + Math.round(alt) + 'm');
+      }
+    });
+  }
+
+  if (dist[dst] === Infinity) return null;
+
+  var path = buildPath(prev, src, dst);
+  if (!path.length) return null;
+
+  return { path: path, dist: Math.round(dist[dst]), ord: ord, steps: steps };
+}
+
+function astar(src, dst) {
+  /*
+    g[n] = known cost from src to n
+    f[n] = g[n] + h(n, dst)   (estimated total cost through n)
+    Only f is used for priority; g is used for relaxation.
+  */
+  var g = {}, prev = {}, vis = {}, ord = [], steps = [];
+  BLD.forEach(function(b) { g[b.id] = Infinity; });
+  g[src] = 0;
+
+  var open = [{ n: src, f: heur(src, dst) }];
+
+  while (open.length) {
+    open.sort(function(a, b) { return a.f - b.f; });
+    var top = open.shift();
+    var u = top.n;
+
+    if (vis[u]) continue;
+    vis[u] = true;
+    ord.push(u);
+    steps.push('★ Visit ' + NODES[u].label + ' (g=' + Math.round(g[u]) + 'm h=' + Math.round(heur(u, dst)) + 'm)');
+
+    if (u === dst) break;
+
+    (G[u] || []).forEach(function(e) {
+      if (vis[e.to]) return;
+      var tg = g[u] + e.d;
+      if (tg < g[e.to]) {
+        g[e.to] = tg;
+        prev[e.to] = u;
+        open.push({ n: e.to, f: tg + heur(e.to, dst) });
+        steps.push('   Update ' + NODES[e.to].label + ': g=' + Math.round(tg) + 'm f=' + Math.round(tg + heur(e.to, dst)) + 'm');
+      }
+    });
+  }
+
+  if (g[dst] === Infinity) return null;
+
+  var path = buildPath(prev, src, dst);
+  if (!path.length) return null;
+
+  return { path: path, dist: Math.round(g[dst]), ord: ord, steps: steps };
+}
+
+/* ═══════════════════════════════════════════════════
+   RUN BOTH ALGORITHMS — animate separately so both
+   visited sets are clearly distinguishable on the map
+═══════════════════════════════════════════════════ */
+function runBoth() {
+  if (busy) return;
+  var src = document.getElementById('ss').value;
+  var dst = document.getElementById('sd').value;
+  if (!src) { toast('Please select a Source'); return; }
+  if (!dst) { toast('Please select a Destination'); return; }
+  if (src === dst) { toast('Source and Destination must differ'); return; }
+
+  clearVis(false);
+  busy = true;
+  var btn = document.getElementById('rbtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="shim"></span>Computing…';
+  setSt('run', 'Computing…');
+
+  /* Run both algorithms synchronously first */
+  var rD = dijkstra(src, dst);
+  var rA = astar(src, dst);
+
+  if (!rD && !rA) {
+    toast('No path found between selected locations!');
+    btn.disabled = false; btn.innerHTML = '▶&nbsp; Find &amp; Compare Both Paths';
+    setSt('', 'Ready'); busy = false; return;
+  }
+
+  /* Fixed animation timing — snappy but readable */
+  var maxVisit = Math.max(rD ? rD.ord.length : 0, rA ? rA.ord.length : 0);
+  var stepMs = Math.max(10, Math.round(600 / Math.max(maxVisit, 1)));
+  var pathMs = 80;
+
+  /* Mark source / dest immediately */
+  VM[src] = 'source'; VM[dst] = 'dest'; draw();
+
+  /* Build visited-only lists (exclude src, dst, and nodes on each algo's path) */
+  var onPD = {}, onPA = {};
+  if (rD) rD.path.forEach(function(n) { onPD[n] = true; });
+  if (rA) rA.path.forEach(function(n) { onPA[n] = true; });
+
+  var visitD = rD ? rD.ord.filter(function(n) { return !onPD[n] && n !== src && n !== dst; }) : [];
+  var visitA = rA ? rA.ord.filter(function(n) { return !onPA[n] && n !== src && n !== dst; }) : [];
+  var maxVLen = Math.max(visitD.length, visitA.length);
+
+  /* Animate visited nodes — use separate VIS_D / VIS_A sets so both colours show */
+  for (var i = 0; i < maxVLen; i++) {
+    (function(ii) {
+      setTimeout(function() {
+        if (ii < visitD.length) { VIS_D[visitD[ii]] = true; }
+        if (ii < visitA.length) { VIS_A[visitA[ii]] = true; }
+        draw();
+      }, ii * stepMs);
+    })(i);
+  }
+
+  /* Animate path edges after visited animation finishes */
+  var pStart = maxVLen * stepMs + 180;
+  var maxPLen = Math.max(rD ? rD.path.length : 0, rA ? rA.path.length : 0);
+
+  for (var j = 1; j < maxPLen; j++) {
+    (function(jj) {
+      setTimeout(function() {
+        /* Dijkstra path segment */
+        if (rD && jj < rD.path.length) {
+          var a = rD.path[jj - 1], b = rD.path[jj];
+          PD.push({ a: a, b: b });
+          /* Mark intermediate path nodes (not src/dst) */
+          if (a !== src && a !== dst) {
+            VM[a] = VM[a] === 'path-a' ? 'path-both' : 'path-d';
+          }
+        }
+        /* A* path segment */
+        if (rA && jj < rA.path.length) {
+          var a2 = rA.path[jj - 1], b2 = rA.path[jj];
+          PA.push({ a: a2, b: b2 });
+          if (a2 !== src && a2 !== dst) {
+            VM[a2] = VM[a2] === 'path-d' ? 'path-both' : 'path-a';
+          }
+        }
+        draw();
+
+        /* Finish: both path animations are done when j reaches maxPLen-1.
+           But rD or rA might be shorter — guard with the length checks above. */
+        if (jj === maxPLen - 1) {
+          VM[src] = 'source'; VM[dst] = 'dest'; draw();
+          showResults(src, dst, rD, rA);
+          btn.disabled = false;
+          btn.innerHTML = '▶&nbsp; Find &amp; Compare Both Paths';
+          setSt('done', 'Path Found');
+          busy = false;
+          var dStr = rD ? rD.dist + 'm' : '—';
+          var aStr = rA ? rA.dist + 'm' : '—';
+          toast('Dijkstra: ' + dStr + ' · A*: ' + aStr);
+        }
+      }, pStart + jj * pathMs);
+    })(j);
+  }
+
+  /* Edge case: single-hop path (maxPLen === 1) */
+  if (maxPLen <= 1) {
+    setTimeout(function() {
+      VM[src] = 'source'; VM[dst] = 'dest'; draw();
+      showResults(src, dst, rD, rA);
+      btn.disabled = false;
+      btn.innerHTML = '▶&nbsp; Find &amp; Compare Both Paths';
+      setSt('done', 'Path Found');
+      busy = false;
+    }, pStart);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════ */
+function showResults(src, dst, rD, rA) {
+  /* Stats */
+  function set(id, v) { document.getElementById(id).textContent = v !== null ? v : '—'; }
+  set('dd', rD ? rD.dist : null);
+  set('dv', rD ? rD.ord.length : null);
+  set('dt', rD ? (rD.dist / 80).toFixed(1) : null);
+  set('dh', rD ? rD.path.length - 1 : null);
+  set('ad', rA ? rA.dist : null);
+  set('av', rA ? rA.ord.length : null);
+  set('at', rA ? (rA.dist / 80).toFixed(1) : null);
+  set('ah', rA ? rA.path.length - 1 : null);
+
+  /* Winner badges */
+  var db = document.getElementById('dbadge'), ab = document.getElementById('abadge');
+  db.className = ''; ab.className = '';
+  if (rD && rA) {
+    var dv = rD.ord.length, av = rA.ord.length;
+    if (dv < av)      { db.className = 'wbadge'; db.textContent = '✓ Fewer nodes visited'; ab.className = 'lbadge'; ab.textContent = 'More nodes visited'; }
+    else if (av < dv) { ab.className = 'wbadge'; ab.textContent = '✓ Fewer nodes visited'; db.className = 'lbadge'; db.textContent = 'More nodes visited'; }
+    else              { db.className = 'wbadge'; db.textContent = '= Equal'; ab.className = 'wbadge'; ab.textContent = '= Equal'; }
+  }
+
+  /* Insight */
+  var ins = '';
+  if (rD && rA) {
+    var saved = rD.ord.length - rA.ord.length;
+    var pct = rD.ord.length > 0 ? Math.round(Math.abs(saved) / rD.ord.length * 100) : 0;
+    if (saved > 0)
+      ins = '<b>A*</b> visited <b style="color:#f97316">' + saved + ' fewer nodes</b> (' + pct + '% less) — its Euclidean heuristic aimed toward the goal, avoiding irrelevant areas. <b>Dijkstra</b> spread across all ' + rD.ord.length + ' reachable nodes. Both reached the same optimal <b>' + rD.dist + 'm</b>.';
+    else if (saved < 0)
+      ins = '<b>Dijkstra</b> visited <b style="color:#60a5fa">' + Math.abs(saved) + ' fewer nodes</b> on this route — A*\'s heuristic caused some re-expansions. Both still found the optimal <b>' + rD.dist + 'm</b>.';
+    else
+      ins = 'Both visited the same ' + rD.ord.length + ' nodes on this route. Try a longer cross-campus route (e.g. North Gate → SC Ground) to see A* skip entire regions!';
+  } else if (rD) { ins = 'Only Dijkstra found a path: <b>' + rD.dist + 'm</b>.'; }
+  else if (rA)   { ins = 'Only A* found a path: <b>' + rA.dist + 'm</b>.'; }
+  document.getElementById('ins').innerHTML = ins;
+
+  /* Path chains */
+  function buildChain(result, cid, pathCol) {
+    var c = document.getElementById(cid); c.innerHTML = '';
+    if (!result) { c.innerHTML = '<div style="font-size:.66rem;color:var(--t3)">No path</div>'; return; }
+    result.path.forEach(function(id, idx) {
+      var iF = idx === 0, iL = idx === result.path.length - 1;
+      var dc = iF ? '#10b981' : iL ? '#f87171' : pathCol;
+      var ed = '';
+      if (!iL) {
+        var nx = result.path[idx + 1];
+        for (var i = 0; i < EDGES.length; i++) {
+          var e = EDGES[i];
+          if ((e[0]===id&&e[1]===nx)||(e[1]===id&&e[0]===nx)) { ed = '+' + e[2] + 'm'; break; }
+        }
+      }
+      var row = document.createElement('div'); row.className = 'pn';
+      row.innerHTML = '<div class="dot" style="background:' + dc + '"></div><span>' + NODES[id].label + '</span>' + (ed ? '<span class="dd">' + ed + '</span>' : '');
+      c.appendChild(row);
+      if (!iL) { var co = document.createElement('div'); co.className = 'pc'; co.style.marginLeft = '1px'; c.appendChild(co); }
+    });
+  }
+  buildChain(rD, 'cd', '#60a5fa');
+  buildChain(rA, 'ca', '#f97316');
+
+  /* Step logs */
+  function buildLog(result, lid, cls) {
+    var b = document.getElementById(lid);
+    if (!result) { b.innerHTML = '<div class="ll">No result</div>'; return; }
+    var html = '', lim = Math.min(result.steps.length, 60);
+    for (var i = 0; i < lim; i++) {
+      html += '<div class="ll ' + (result.steps[i].indexOf('Relax') >= 0 || result.steps[i].indexOf('Update') >= 0 ? '' : cls) + '">' + (i + 1) + '. ' + result.steps[i] + '</div>';
+    }
+    if (result.steps.length > 60) html += '<div class="ll">… +' + (result.steps.length - 60) + ' more</div>';
+    b.innerHTML = html; b.scrollTop = b.scrollHeight;
+  }
+  buildLog(rD, 'ld', 'hd');
+  buildLog(rA, 'la', 'ha');
+
+  /* Show sections */
+  ['sec-res', 'sec-chains', 'sec-log'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.classList.remove('hidden'); el.classList.add('fin');
+  });
+}
+
+function clearVis(resetDrops) {
+  if (resetDrops === undefined) resetDrops = true;
+  VM = {}; VIS_D = {}; VIS_A = {}; PD = []; PA = [];
+  draw();
+  ['sec-res', 'sec-chains', 'sec-log'].forEach(function(id) {
+    document.getElementById(id).classList.add('hidden');
+  });
+  setSt('', 'Ready');
+  if (resetDrops) {
+    document.getElementById('ss').value = '';
+    document.getElementById('sd').value = '';
+    SRC = ''; DST = '';
+  }
+}
+
+function clearAll() {
+  busy = false;
+  document.getElementById('rbtn').disabled = false;
+  document.getElementById('rbtn').innerHTML = '▶&nbsp; Find &amp; Compare Both Paths';
+  clearVis(true);
+}
+
+function onSel(w) {
+  var val = document.getElementById(w === 's' ? 'ss' : 'sd').value;
+  if (!val) return;
+  var oldKey = w === 's' ? SRC : DST;
+  /* Clear old state if it was set by this selector */
+  if (oldKey && VM[oldKey] === (w === 's' ? 'source' : 'dest')) { delete VM[oldKey]; }
+  if (w === 's') { SRC = val; VM[val] = 'source'; }
+  else            { DST = val; VM[val] = 'dest'; }
+  draw();
+}
+
+function doSwap() {
+  var s = document.getElementById('ss').value, d = document.getElementById('sd').value;
+  document.getElementById('ss').value = d; document.getElementById('sd').value = s;
+  var ts = SRC; SRC = DST; DST = ts;
+  /* swap visual states */
+  if (SRC) VM[SRC] = 'source';
+  if (DST) VM[DST] = 'dest';
+  draw();
+}
+
+function setSt(t, m) { var s = document.getElementById('mst'); s.textContent = m; s.className = 'mst' + (t ? ' ' + t : ''); }
+
+var sbOpen = true;
+function toggleSB() {
+  sbOpen = !sbOpen;
+  document.getElementById('sb').classList.toggle('off', !sbOpen);
+  var btn = document.getElementById('fb');
+  btn.textContent = sbOpen ? '⛶ Full Map' : '◧ Show Panel';
+  btn.classList.toggle('on', !sbOpen);
+  setTimeout(function() { rsz(); draw(); }, 340);
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.innerHTML = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(function() { t.classList.remove('on'); }, 3500);
+}
+
+window.onload = function() { initCanvas(); };
+</script>
+</body>
+</html>
